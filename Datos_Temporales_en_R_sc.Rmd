@@ -1,0 +1,128 @@
+---
+title: "Datos temporales y espaciales en R"
+author: "Sofía Chung"
+format: 
+  gfm:
+    toc: false
+editor: visual
+---
+
+# Ejemplo de datos temporales en R
+
+Sofía Chung
+
+## Obtención de información
+
+Se obtuvo información del producto *Global Ocean Physics Reanalysis* de Copernicus (<https://data.marine.copernicus.eu/product/GLOBAL_MULTIYEAR_PHY_001_030/download?dataset=cmems_mod_glo_phy_my_0.083deg_P1D-m_202311>), con data en formato nc. de Temperatura Potencial Diaria a profundidad de 0.49m, y de periodo de un año correspondiente a 01/01/2021 a 31/12/2021, frente a las costas peruanas.
+
+## Análisis temporal
+
+Abrimos el paquete descargado y exploramos sus variables para confirmar la información:
+
+```{r}
+#install.packages("ndf4")
+library(ncdf4)
+ncf <- nc_open("C:/Users/Sofia.Chung/Downloads/Personal/OHWe25/Talleres_intermedios/Evaluación_scchv/cmems_mod_glo_phy_my_0.083deg_P1D-m_1760712233161.nc")
+
+#names(ncf$var)
+#ncf$var$thetao
+
+time <- ncf$dim$time$vals
+head(time)
+```
+
+Revisando el archivo nos percatamos que las fechas se encuentran en "segundos desde 1970/01/01" por lo que debemos convertirlo:
+
+```{r}
+time <- as.POSIXct(time, tz = "UTC", format = "%Y-%m-%d", 
+                   origin = "1970-01-01 00:00:00")
+head(time)
+```
+
+Verificamos que las fechas dadas se encuentran ahora en formato UTM para poder trabajarlas.
+
+Con la función `read.cmems()` del paquete **satin**, importamos el archivo ara poder ver los datos diarios de temperatura potencial obtenidos:
+
+```{r}
+# install.packages("devtools")
+library(devtools)
+#devtools::install_github("hvillalo/satin")
+library(satin)
+
+thetao <- read.cmems("C:/Users/Sofia.Chung/Downloads/Personal/OHWe25/Talleres_intermedios/Evaluación_scchv/cmems_mod_glo_phy_my_0.083deg_P1D-m_1760712233161.nc")
+class(thetao)
+```
+
+Después de confirmar que es un archivo satin, podemos explorar su contenido:
+
+```{r}
+thetao
+```
+
+Verificamos que los valores corresponden a la temperatura potencia diaria en °C con 187 días de información pero que el periodo de fecha va desde 01/01/2021 al 30/06/2021, con un solo dato de profundidad de 0.49m y una resolucicón espacial de 9.2km.
+
+Para ver los slots usamos "\@":
+
+```{r}
+head(thetao@period$tmStart); tail(thetao@period$tmStart)
+```
+
+Podemos verificar los valores en una escala de la zona geográfica de nuestros datos:
+
+```{r}
+plot(thetao)
+```
+
+Podemos tomar un pixel a los 12° de lat S y 77° de lon W (cerca a Lima, Perú)
+
+```{r}
+pt <- data.frame(x = -77, y = -12.5)
+sst <- extractPts(thetao, points = pt)
+dim(sst)
+
+sst[ , 1:10]
+```
+
+En `sst` están los valores de temperatura potencial para el punto frente a Lima que hemos seleccionado. Podemos usar también la siguiente función para "re-arreglar" los datos extraídos:
+
+```{r}
+sst[ , 1:10]
+
+# función para darle formato a datos extraídos con extractPts()
+formatXTP <- function(pts, plot.error = FALSE){
+  error <- pts$d
+  if (plot.error == TRUE){
+    x11(); hist(error)
+  }
+  npts <- nrow(pts)
+  ncols <- ncol(pts)
+  att <- attributes(pts)
+  ans <- data.frame(fecha = att$attribs$period$tmStart, t(pts[, 7:ncols]))
+  rownames(ans) <- NULL
+  names(ans)[2:(npts+1)] <- paste("loc", 1:npts, sep = ".")
+  ans
+}
+
+tsm <- formatXTP(sst)
+tsm <- tsm[1:181, ]
+head(tsm)
+```
+
+Con todo eso seteado, podemos graficar la serie de tiempo de nuestros datos usando la función `plot()`:
+
+```{r}
+plot(tsm, type = "o", pch = 16, col = rgb(1, 0, 0, 0.2))
+```
+
+Y podemos suavizalo con la función `cma()` del paquete **smooth**. Como tenemos data de medio año aproximadamente, usaremos el orden de 5 para ser lo más precisos posibles:
+
+```{r}
+#install.packages("smooth")
+library(smooth)
+sm <- cma(tsm$loc.1, order = 5)
+tsm$sm <- sm$fitted
+
+plot(tsm$fecha, tsm$loc.1, type = "b", pch = 16, col = rgb(1, 0, 0, 0.2),
+     xlab = "2021", ylab = "temperatura potencial del mar (°C)")
+lines(tsm$fecha, tsm$sm, lwd = 2.5)
+```
