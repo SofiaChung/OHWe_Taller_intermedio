@@ -1,15 +1,24 @@
 ---
-title: "Datos temporales y espaciales en R"
-author: "Sofía Chung"
-format: 
-  gfm:
-    toc: false
-editor: visual
+title: "Datos Temporales"
+author: "Sofia Chung"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    fig_caption: true
+    highlight: tango
+    theme: united
+    code_folding: hide
+    toc: true
+    toc:depth: 5
+    toc:float: true
+    df_print: paged
+editor_options:
+  markdown:
+    wrap: 72
 ---
 
-# Ejemplo de datos temporales en R
-
-Sofía Chung
 
 ## Obtención de información
 

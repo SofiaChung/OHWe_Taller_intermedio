@@ -1,19 +1,21 @@
 ---
-title: "Datos espaciales de métricas climáticas a nivel global y en el Mar Mediterráneo Occidental para la OHW Intercoonecta - Octubre 2025"
-author: "Marina Sanz-Martín"
+title: "Datos espaciales"
+author: "Sofia Chung"
 date: "`r Sys.Date()`"
-output: 
+output:
+  pdf_document:
+    toc: true
   html_document:
-    fig_caption: yes
+    fig_caption: true
     highlight: tango
     theme: united
     code_folding: hide
-    toc: yes
+    toc: true
     toc:depth: 5
-    toc:float: yes
+    toc:float: true
     df_print: paged
-editor_options: 
-  markdown: 
+editor_options:
+  markdown:
     wrap: 72
 ---
 
@@ -76,7 +78,8 @@ verificamos la información:
 
 ```{r}
 library(ncdf4)
-sst_sst <- brick(sst)
+library(raster)
+sst_sst <- raster::brick(sst)
 sst_sst
 ```
 
@@ -90,7 +93,7 @@ layer representa un solo día.
 names(sst_sst) #para ver los layers
 dim(sst_sst) #ver las dimensiones
 plot(sst_sst) # cada layer es un día
-plot(sst_dias[[1]]) #vemos el layer del primer día (01-01-2001)
+plot(sst_sst[[1]]) #vemos el layer del primer día (01-01-2001)
 ```
 
 Ahora, con la información, podemos hacer un cálculo de promedios en
@@ -99,7 +102,7 @@ diario a mensual:
 
 ```{r sumSeries}
 
-mt_sst <- sumSeries(sst_sst, 
+mt_sst <- VoCC::sumSeries(sst_sst, 
                     p = "2021-01/2021-06", # año-mes inicial, año-mes final de mi serie de datos
                     yr0 = "2021-01-01", # día inicial desde la que quiero que comience los cálculos
                     l = nlayers(sst_sst), # layers de mi fichero
@@ -119,18 +122,10 @@ Con nuestros layers, ahora podemos hacer cálculo de la tendencia
 temporal de todos los meses en promedio:
 
 ```{r tendencia temporal}
-
+#saveRDS(object = temp_trend, file = "temp_trend.Rds")
 mean_all <- mean(mt_sst)
 plot(mean_all, main ="Promedio de Temp. Potencial (ºC) 01-2021 a 06-2021") 
 
-# otra manera de dibujarlo
-plot(temp_trend[[1]], main = "Tendencia temporal de SST (ºC/año)")
-plot(temp_trend[[2]], main = "SE Error Estándard")
-plot(temp_trend[[3]], main = "p-value")
-
-# Ya solo llegar hasta aquí y obtener la métrica de la tendencia temporal de SST puede sernos muy útil para muchos análisis. 
-# esto mismo podríamos calcularlo solo para los meses de primavera, por ejemplo
-# Los siguientes pasos son ligéramente más complejos
 
 ```
 
@@ -138,14 +133,15 @@ Para calcular la tendencia climática local, y obtener la pendiente,
 error estándar y significancia, podemos usar `tempTrend`
 
 ```{r}
-temp_trend <- tempTrend(mt_sst, th = 3) # 3 nlayers slp, se y significance; 101.640 celdas
+temp_trend <- VoCC::tempTrend(mt_sst, th = 3) # 3 nlayers slp, se y significance; 101.640 celdas
 temp_trend
 
 plot(temp_trend, main = c("Tendencia temporal de Temp. Potencial (ºC/mes)", "SE", "p-valor"))
 
 #o podemos plotearlo de manera independiente:
+# otra manera de dibujarlo
+# plot(temp_trend[[1]], main = "Tendencia temporal de SST (ºC/año)")
+# plot(temp_trend[[2]], main = "SE Error Estándard")
+# plot(temp_trend[[3]], main = "p-value")
 
-#plot(temp_trend[[1]], main = "Tendencia temporal de Temp. Potencial (ºC/mes)")
-#plot(temp_trend[[2]], main = "SE Error Estándard")
-#plot(temp_trend[[3]], main = "p-value")
 ```
